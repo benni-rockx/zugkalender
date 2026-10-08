@@ -1,0 +1,24 @@
+{
+  "from": {
+    "name": "Niederweimar",
+    "eva": "8004420"
+  },
+  "to": {
+    "name": "Frankfurt (Main) Hbf",
+    "eva": "8000105"
+  },
+  "weekday_only": true,
+  "morning": {
+    "direction": "outbound",
+    "departure_start": "05:25",
+    "departure_end": "07:00"
+  },
+  "afternoon": {
+    "direction": "return",
+    "departure_start": "14:00",
+    "departure_end": "16:30"
+  },
+  "horizon_days": 35,
+  "calendar_name": "Zugverbindungen Niederweimar ↔ Frankfurt",
+  "timezone": "Europe/Berlin"
+}
