@@ -1,238 +1,623 @@
-#!/usr/bin/env python3
-"""Erzeugt einen iCalendar-Feed aus dem frei zugänglichen GTFS-Feed von GTFS.DE.
-
-Keine Registrierung, kein DB-API-Schlüssel und keine persönlichen Daten erforderlich.
-Der Feed enthält den deutschen Schienenregionalverkehr und wird von GTFS.DE
-regelmäßig aktualisiert.
-"""
-from __future__ import annotations
-
 import csv
 import io
 import json
 import zipfile
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
-CONFIG = json.loads(Path("config.json").read_text(encoding="utf-8"))
-TZ = ZoneInfo(CONFIG.get("timezone", "Europe/Berlin"))
+
 FEED_URL = "https://download.gtfs.de/germany/rv_free/latest.zip"
+TIMEZONE = ZoneInfo("Europe/Berlin")
+
+with open("config.json", "r", encoding="utf-8") as f:
+    CONFIG = json.load(f)
 
 
-def fetch_feed() -> zipfile.ZipFile:
-    req = Request(FEED_URL, headers={"User-Agent": "zugkalender/2.0"})
-    with urlopen(req, timeout=120) as response:
+def fetch_feed():
+    print("Lade aktuellen GTFS-Fahrplan ...")
+
+    request = Request(
+        FEED_URL,
+        headers={"User-Agent": "zugkalender/1.0"}
+    )
+
+    with urlopen(request, timeout=60) as response:
         data = response.read()
+
+    print(f"GTFS-Download: {len(data) / 1024 / 1024:.1f} MB")
+
     return zipfile.ZipFile(io.BytesIO(data))
 
 
-def read_csv(zf: zipfile.ZipFile, filename: str) -> list[dict[str, str]]:
-    with zf.open(filename) as raw:
-        text = io.TextIOWrapper(raw, encoding="utf-8-sig", newline="")
+def read_csv(zf, filename):
+    with zf.open(filename) as f:
+        text = io.TextIOWrapper(f, encoding="utf-8-sig")
         return list(csv.DictReader(text))
 
 
-def gtfs_time(value: str, service_day: date) -> datetime:
-    """GTFS-Zeit; Werte >=24:00 dürfen bis in den Folgetag reichen."""
-    h, m, s = map(int, value.split(":"))
-    return datetime.combine(service_day, datetime.min.time(), TZ) + timedelta(
-        hours=h, minutes=m, seconds=s
+def normalize(text):
+    if not text:
+        return ""
+
+    return (
+        text.lower()
+        .replace(" ", "")
+        .replace("-", "")
+        .replace("_", "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace(".", "")
     )
 
 
-def hm(value: str):
-    return datetime.strptime(value, "%H:%M").time()
+def station_ids(stops, station_name, config_station=None):
+    """
+    Sucht einen Bahnhof robust über:
+    1. stop_id / station_id aus der Konfiguration
+    2. exakte Schreibweise
+    3. normalisierte Schreibweise
+    """
+
+    # 1. Falls eine bekannte GTFS-/Stations-ID angegeben ist
+    if config_station:
+        candidates = {
+            str(config_station),
+            str(config_station).strip(),
+        }
+
+        for stop in stops:
+            if str(stop.get("stop_id", "")) in candidates:
+                print(
+                    f"Bahnhof gefunden über ID: "
+                    f"{station_name} -> {stop.get('stop_id')} "
+                    f"({stop.get('stop_name')})"
+                )
+                return {stop["stop_id"]}
+
+    # 2. Exakte Schreibweise
+    exact = set()
+
+    for stop in stops:
+        if stop.get("stop_name", "").strip().lower() == station_name.strip().lower():
+            exact.add(stop["stop_id"])
+
+    if exact:
+        print(f"Bahnhof gefunden: {station_name}")
+        return exact
+
+    # 3. Robuster Vergleich ohne Leerzeichen/Sonderzeichen
+    wanted = normalize(station_name)
+
+    matches = set()
+
+    for stop in stops:
+        stop_name = normalize(stop.get("stop_name", ""))
+
+        if stop_name == wanted:
+            matches.add(stop["stop_id"])
+
+    if matches:
+        print(f"Bahnhof gefunden (normalisierte Suche): {station_name}")
+
+        for stop in stops:
+            if stop["stop_id"] in matches:
+                print(
+                    f"  -> {stop.get('stop_name')} "
+                    f"[{stop.get('stop_id')}]"
+                )
+
+        return matches
+
+    # 4. Teiltreffer als letzte Möglichkeit
+    partial = set()
+
+    for stop in stops:
+        stop_name = normalize(stop.get("stop_name", ""))
+
+        if wanted in stop_name or stop_name in wanted:
+            partial.add(stop["stop_id"])
+
+    if partial:
+        print(f"Bahnhof gefunden (Teiltreffer): {station_name}")
+
+        for stop in stops:
+            if stop["stop_id"] in partial:
+                print(
+                    f"  -> {stop.get('stop_name')} "
+                    f"[{stop.get('stop_id')}]"
+                )
+
+        return partial
+
+    raise RuntimeError(
+        f"Bahnhof nicht im GTFS-Feed gefunden: {station_name}"
+    )
 
 
-def in_window(dt: datetime, start: str, end: str) -> bool:
-    return hm(start) <= dt.timetz().replace(tzinfo=None) <= hm(end)
+def parse_time(value):
+    """
+    GTFS erlaubt auch Zeiten > 24:00:00.
+    """
+
+    parts = value.split(":")
+
+    hours = int(parts[0])
+    minutes = int(parts[1])
+    seconds = int(parts[2])
+
+    return timedelta(
+        hours=hours,
+        minutes=minutes,
+        seconds=seconds
+    )
 
 
-def esc(value: str) -> str:
-    return value.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
-
-
-def ics_dt(dt: datetime) -> str:
-    return dt.astimezone(TZ).strftime("%Y%m%dT%H%M%S")
-
-
-def date_range(start: date, end: date):
-    d = start
-    while d <= end:
-        yield d
-        d += timedelta(days=1)
-
-
-def active_dates(calendar_rows, calendar_dates_rows, start, end):
+def active_dates(calendar_rows, calendar_dates_rows, start_date, end_date):
     active = set()
-    for row in calendar_rows:
-        s = datetime.strptime(row["start_date"], "%Y%m%d").date()
-        e = datetime.strptime(row["end_date"], "%Y%m%d").date()
-        lo, hi = max(start, s), min(end, e)
-        if lo > hi:
-            continue
-        weekday_keys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-        for d in date_range(lo, hi):
-            if row[weekday_keys[d.weekday()]] == "1":
-                active.add((row["service_id"], d))
+
+    calendar = {
+        row["service_id"]: row
+        for row in calendar_rows
+    }
+
+    current = start_date
+
+    while current <= end_date:
+
+        weekday = current.weekday()
+
+        for service_id, row in calendar.items():
+
+            start = datetime.strptime(
+                row["start_date"], "%Y%m%d"
+            ).date()
+
+            end = datetime.strptime(
+                row["end_date"], "%Y%m%d"
+            ).date()
+
+            if not (start <= current <= end):
+                continue
+
+            weekday_columns = [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday",
+            ]
+
+            if row[weekday_columns[weekday]] == "1":
+                active.add((current, service_id))
+
+        current += timedelta(days=1)
+
+    # Ausnahmen
     for row in calendar_dates_rows:
-        d = datetime.strptime(row["date"], "%Y%m%d").date()
-        if not (start <= d <= end):
+
+        d = datetime.strptime(
+            row["date"], "%Y%m%d"
+        ).date()
+
+        if not (start_date <= d <= end_date):
             continue
-        key = (row["service_id"], d)
+
+        key = (d, row["service_id"])
+
+        # 1 = zusätzlich
         if row["exception_type"] == "1":
             active.add(key)
+
+        # 2 = entfernen
         elif row["exception_type"] == "2":
             active.discard(key)
+
     return active
 
 
-def station_ids(stops, station_name):
-    target = " ".join(station_name.lower().replace("(main)", "").split())
-    ids = set()
-    # Erst exakte Stop-/Stationsnamen. GTFS kann mehrere Bahnsteige enthalten.
-    for s in stops:
-        name = " ".join(s.get("stop_name", "").lower().split())
-        if name == " ".join(station_name.lower().split()):
-            ids.add(s["stop_id"])
-    # Fallback für Varianten wie Frankfurt(Main)Hbf.
-    if not ids:
-        for s in stops:
-            name = " ".join(s.get("stop_name", "").lower().replace("(main)", "").split())
-            if name == target:
-                ids.add(s["stop_id"])
-    if not ids:
-        raise RuntimeError(f"Bahnhof nicht im GTFS-Feed gefunden: {station_name}")
-    return ids
+def format_ics_datetime(dt):
+    return dt.astimezone(TIMEZONE).strftime("%Y%m%dT%H%M%S")
+
+
+def escape_ics(text):
+    return (
+        str(text)
+        .replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\n", "\\n")
+    )
 
 
 def main():
-    horizon = int(CONFIG.get("horizon_days", 35))
-    today = datetime.now(TZ).date()
-    end = today + timedelta(days=horizon)
 
-    with fetch_feed() as zf:
-        stops = read_csv(zf, "stops.txt")
-        trips = read_csv(zf, "trips.txt")
-        stop_times = read_csv(zf, "stop_times.txt")
-        calendar = read_csv(zf, "calendar.txt") if "calendar.txt" in zf.namelist() else []
-        calendar_dates = read_csv(zf, "calendar_dates.txt") if "calendar_dates.txt" in zf.namelist() else []
-        routes = read_csv(zf, "routes.txt") if "routes.txt" in zf.namelist() else []
+    zf = fetch_feed()
 
-    from_ids = station_ids(stops, CONFIG["from"]["name"])
-    to_ids = station_ids(stops, CONFIG["to"]["name"])
+    print("Lese GTFS-Dateien ...")
 
-    trip_by_id = {t["trip_id"]: t for t in trips}
-    route_by_id = {r["route_id"]: r for r in routes}
+    stops = read_csv(zf, "stops.txt")
+    stop_times = read_csv(zf, "stop_times.txt")
+    trips = read_csv(zf, "trips.txt")
 
-    # Stopzeiten je Trip; nur die beiden relevanten Bahnhöfe werden benötigt.
-    relevant = {}
-    for st in stop_times:
-        sid = st.get("stop_id")
-        if sid not in from_ids and sid not in to_ids:
-            continue
-        tid = st["trip_id"]
-        relevant.setdefault(tid, []).append(st)
+    try:
+        calendar = read_csv(zf, "calendar.txt")
+    except KeyError:
+        calendar = []
 
-    # Nur Trips behalten, die beide Bahnhöfe in der richtigen Reihenfolge bedienen.
-    pairs = []
-    for tid, rows in relevant.items():
-        trip = trip_by_id.get(tid)
-        if not trip:
-            continue
-        try:
-            ordered = sorted(rows, key=lambda r: int(r.get("stop_sequence", "0")))
-        except ValueError:
-            ordered = rows
-        from_rows = [r for r in ordered if r.get("stop_id") in from_ids]
-        to_rows = [r for r in ordered if r.get("stop_id") in to_ids]
-        if from_rows and to_rows:
-            pairs.append((tid, trip, from_rows, to_rows))
+    try:
+        calendar_dates = read_csv(zf, "calendar_dates.txt")
+    except KeyError:
+        calendar_dates = []
 
-    active = active_dates(calendar, calendar_dates, today, end)
+    try:
+        routes = read_csv(zf, "routes.txt")
+    except KeyError:
+        routes = []
+
+    print(f"Stops: {len(stops)}")
+    print(f"Trips: {len(trips)}")
+    print(f"Stop times: {len(stop_times)}")
+
+    # ---------------------------------------------------------
+    # Bahnhöfe
+    # ---------------------------------------------------------
+
+    from_config = CONFIG["stations"]
+
+    from_station = from_config["from"]
+    to_station = from_config["to"]
+
+    from_ids = station_ids(
+        stops,
+        from_station["name"],
+        from_station.get("id")
+    )
+
+    to_ids = station_ids(
+        stops,
+        to_station["name"],
+        to_station.get("id")
+    )
+
+    print()
+    print("Startbahnhof:", from_station["name"])
+    print("Zielbahnhof:", to_station["name"])
+    print("Start-IDs:", from_ids)
+    print("Ziel-IDs:", to_ids)
+    print()
+
+    # ---------------------------------------------------------
+    # Stop Times vorbereiten
+    # ---------------------------------------------------------
+
+    stop_times_by_trip = {}
+
+    for row in stop_times:
+
+        trip_id = row["trip_id"]
+
+        stop_times_by_trip.setdefault(
+            trip_id,
+            []
+        ).append(row)
+
+    # ---------------------------------------------------------
+    # Trips
+    # ---------------------------------------------------------
+
+    trip_by_id = {
+        row["trip_id"]: row
+        for row in trips
+    }
+
+    route_by_id = {
+        row["route_id"]: row
+        for row in routes
+    }
+
+    # ---------------------------------------------------------
+    # Zeitraum
+    # ---------------------------------------------------------
+
+    today = date.today()
+
+    end_date = today + timedelta(days=35)
+
+    active = active_dates(
+        calendar,
+        calendar_dates,
+        today,
+        end_date
+    )
+
+    print(
+        f"Erzeuge Kalender für "
+        f"{today} bis {end_date}"
+    )
+
     events = []
-    counts = {"outbound": 0, "return": 0}
 
-    for d in date_range(today, end):
-        if d.weekday() >= 5:
+    # ---------------------------------------------------------
+    # Verbindungen suchen
+    # ---------------------------------------------------------
+
+    for trip_id, rows in stop_times_by_trip.items():
+
+        if trip_id not in trip_by_id:
             continue
-        for direction, origin_ids, destination_ids, window in [
-            ("outbound", from_ids, to_ids, CONFIG["morning"]),
-            ("return", to_ids, from_ids, CONFIG["afternoon"]),
-        ]:
-            for tid, trip, origin_rows, destination_rows in pairs:
-                if (trip.get("service_id"), d) not in active:
-                    continue
-                # Richtige Richtung anhand der Stop-Reihenfolge bestimmen.
-                for o in origin_rows:
-                    for dest in destination_rows:
-                        if int(o.get("stop_sequence", 0)) >= int(dest.get("stop_sequence", 0)):
-                            continue
-                        dep_raw = o.get("departure_time") or o.get("arrival_time")
-                        arr_raw = dest.get("arrival_time") or dest.get("departure_time")
-                        if not dep_raw or not arr_raw:
-                            continue
-                        dep = gtfs_time(dep_raw, d)
-                        arr = gtfs_time(arr_raw, d)
-                        if not in_window(dep, window["departure_start"], window["departure_end"]):
-                            continue
-                        if arr <= dep:
-                            continue
 
-                        route = route_by_id.get(trip.get("route_id", ""), {})
-                        route_name = route.get("route_short_name") or route.get("route_long_name") or "Zug"
-                        headsign = trip.get("trip_headsign", "")
-                        service_trip = trip.get("trip_id", tid)
-                        summary = f"{route_name}: {CONFIG[('from' if direction == 'outbound' else 'to')]['name']} → {CONFIG[('to' if direction == 'outbound' else 'from')]['name']}"
-                        uid = f"{d:%Y%m%d}-{direction}-{tid}-{o.get('stop_sequence')}-{dest.get('stop_sequence')}@zugkalender"
-                        desc = (
-                            f"Linie: {route_name}\\n"
-                            f"Abfahrt: {dep:%H:%M}\\n"
-                            f"Ankunft: {arr:%H:%M}\\n"
-                            f"Ziel/Headsign: {headsign}\\n"
-                            f"Quelle: GTFS für Deutschland / Schienenregionalverkehr\\n"
-                            f"Trip-ID: {service_trip}"
-                        )
-                        event = "\r\n".join([
-                            "BEGIN:VEVENT",
-                            f"UID:{esc(uid)}",
-                            f"DTSTAMP:{datetime.now(TZ).strftime('%Y%m%dT%H%M%S')}",
-                            f"DTSTART;TZID=Europe/Berlin:{ics_dt(dep)}",
-                            f"DTEND;TZID=Europe/Berlin:{ics_dt(arr)}",
-                            f"SUMMARY:{esc(summary)}",
-                            f"DESCRIPTION:{esc(desc)}",
-                            f"LOCATION:{esc(CONFIG[('from' if direction == 'outbound' else 'to')]['name'])}",
-                            "STATUS:CONFIRMED",
-                            "TRANSP:OPAQUE",
-                            "END:VEVENT",
-                        ])
-                        events.append(event)
-                        counts[direction] += 1
-                        break
-                    else:
-                        continue
+        trip = trip_by_id[trip_id]
+
+        service_id = trip.get("service_id")
+
+        # Für jeden Fahrplantag
+        for current_date in (
+            today + timedelta(days=i)
+            for i in range((end_date - today).days + 1)
+        ):
+
+            # Nur Montag bis Freitag
+            if current_date.weekday() >= 5:
+                continue
+
+            if (current_date, service_id) not in active:
+                continue
+
+            from_row = None
+            to_row = None
+
+            for row in rows:
+
+                stop_id = row["stop_id"]
+
+                if stop_id in from_ids:
+                    from_row = row
+
+                if stop_id in to_ids:
+                    to_row = row
+
+            if not from_row or not to_row:
+                continue
+
+            try:
+                from_sequence = int(
+                    from_row["stop_sequence"]
+                )
+
+                to_sequence = int(
+                    to_row["stop_sequence"]
+                )
+            except ValueError:
+                continue
+
+            # Bahnhof muss in der richtigen Reihenfolge liegen
+            if from_sequence >= to_sequence:
+                continue
+
+            departure = from_row["departure_time"]
+            arrival = to_row["arrival_time"]
+
+            dep_delta = parse_time(departure)
+            arr_delta = parse_time(arrival)
+
+            dep_dt = datetime.combine(
+                current_date,
+                datetime.min.time(),
+                tzinfo=TIMEZONE
+            ) + dep_delta
+
+            arr_dt = datetime.combine(
+                current_date,
+                datetime.min.time(),
+                tzinfo=TIMEZONE
+            ) + arr_delta
+
+            # -------------------------------------------------
+            # Verbindungstyp / Richtung
+            # -------------------------------------------------
+
+            route_id = trip.get("route_id", "")
+            route = route_by_id.get(route_id, {})
+
+            route_short_name = route.get(
+                "route_short_name",
+                ""
+            )
+
+            route_long_name = route.get(
+                "route_long_name",
+                ""
+            )
+
+            # -------------------------------------------------
+            # Prüfen, ob Verbindung in eines der gewünschten
+            # Zeitfenster fällt
+            # -------------------------------------------------
+
+            windows = CONFIG["windows"]
+
+            matched_window = None
+
+            for window in windows:
+
+                start = parse_time(
+                    window["start"]
+                )
+
+                end = parse_time(
+                    window["end"]
+                )
+
+                departure_time = dep_dt.timetz()
+
+                start_time = (
+                    datetime.combine(
+                        current_date,
+                        datetime.min.time(),
+                        tzinfo=TIMEZONE
+                    ) + start
+                ).timetz()
+
+                end_time = (
+                    datetime.combine(
+                        current_date,
+                        datetime.min.time(),
+                        tzinfo=TIMEZONE
+                    ) + end
+                ).timetz()
+
+                if start_time <= departure_time <= end_time:
+
+                    matched_window = window
                     break
 
-    # Doppelte Events vermeiden.
-    events = list(dict.fromkeys(events))
-    header = [
-        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Zugkalender Niederweimar Frankfurt//DE",
-        "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-        "X-WR-CALNAME:" + esc(CONFIG["calendar_name"]),
+            if not matched_window:
+                continue
+
+            # -------------------------------------------------
+            # Kalender-Event
+            # -------------------------------------------------
+
+            direction = matched_window.get(
+                "label",
+                "Zugverbindung"
+            )
+
+            title = (
+                f"{route_short_name} "
+                f"{from_station['name']} → "
+                f"{to_station['name']}"
+            ).strip()
+
+            if not route_short_name:
+                title = (
+                    f"Zug "
+                    f"{from_station['name']} → "
+                    f"{to_station['name']}"
+                )
+
+            description_parts = [
+                f"Abfahrt: {from_station['name']}",
+                f"Ankunft: {to_station['name']}",
+            ]
+
+            if route_short_name:
+                description_parts.append(
+                    f"Linie: {route_short_name}"
+                )
+
+            if route_long_name:
+                description_parts.append(
+                    route_long_name
+                )
+
+            description = "\\n".join(
+                description_parts
+            )
+
+            uid = (
+                f"{trip_id}-"
+                f"{current_date.isoformat()}@zugkalender"
+            )
+
+            events.append({
+                "uid": uid,
+                "start": dep_dt,
+                "end": arr_dt,
+                "title": title,
+                "description": description,
+            })
+
+    # ---------------------------------------------------------
+    # Doppelte Einträge entfernen
+    # ---------------------------------------------------------
+
+    unique = {}
+
+    for event in events:
+        unique[event["uid"]] = event
+
+    events = list(unique.values())
+
+    events.sort(
+        key=lambda x: x["start"]
+    )
+
+    print(
+        f"{len(events)} Zugverbindungen gefunden."
+    )
+
+    # ---------------------------------------------------------
+    # ICS schreiben
+    # ---------------------------------------------------------
+
+    now = datetime.now(TIMEZONE)
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Zugkalender//Niederweimar Frankfurt//DE",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Niederweimar ↔ Frankfurt",
         "X-WR-TIMEZONE:Europe/Berlin",
     ]
-    Path("docs/zugkalender.ics").write_text("\r\n".join(header + events + ["END:VCALENDAR"]) + "\r\n", encoding="utf-8")
+
+    for event in events:
+
+        lines.extend([
+            "BEGIN:VEVENT",
+            f"UID:{event['uid']}",
+            f"DTSTAMP:{format_ics_datetime(now)}",
+            f"DTSTART:{format_ics_datetime(event['start'])}",
+            f"DTEND:{format_ics_datetime(event['end'])}",
+            f"SUMMARY:{escape_ics(event['title'])}",
+            f"DESCRIPTION:{escape_ics(event['description'])}",
+            "END:VEVENT",
+        ])
+
+    lines.append("END:VCALENDAR")
+
+    with open(
+        "docs/zugkalender.ics",
+        "w",
+        encoding="utf-8",
+        newline="\r\n"
+    ) as f:
+
+        f.write("\r\n".join(lines))
+
+    # ---------------------------------------------------------
+    # Statusdatei
+    # ---------------------------------------------------------
+
     status = {
-        "generated_at": datetime.now(TZ).isoformat(),
-        "valid_from": today.isoformat(), "valid_until": end.isoformat(),
-        "events": len(events), "outbound_events": counts["outbound"], "return_events": counts["return"],
-        "source": FEED_URL, "source_license": "Creative Commons 4.0",
-        "stations": {"from": CONFIG["from"], "to": CONFIG["to"]},
+        "updated": now.isoformat(),
+        "from": from_station["name"],
+        "to": to_station["name"],
+        "events": len(events),
+        "period_start": today.isoformat(),
+        "period_end": end_date.isoformat(),
+        "source": FEED_URL,
     }
-    Path("docs/status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(status, ensure_ascii=False, indent=2))
+
+    with open(
+        "docs/status.json",
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            status,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+    print("Kalender erfolgreich geschrieben.")
 
 
 if __name__ == "__main__":
