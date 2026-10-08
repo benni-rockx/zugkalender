@@ -2,7 +2,6 @@ name: Fahrplan aktualisieren
 
 on:
   schedule:
-    # Täglich 04:15 UTC
     - cron: "15 4 * * *"
   workflow_dispatch:
 
@@ -16,6 +15,8 @@ jobs:
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Python einrichten
         uses: actions/setup-python@v5
@@ -29,11 +30,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add docs/zugkalender.ics docs/status.json
 
           if git diff --cached --quiet; then
             echo "Keine Änderung am Kalender."
-          else
-            git commit -m "Fahrplan automatisch aktualisiert"
-            git push
+            exit 0
           fi
+
+          git commit -m "Fahrplan automatisch aktualisiert"
+
+          git pull --rebase origin main
+
+          git push origin main
