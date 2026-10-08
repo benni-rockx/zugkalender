@@ -1,0 +1,39 @@
+name: Fahrplan aktualisieren
+
+on:
+  schedule:
+    # Täglich 04:15 UTC
+    - cron: "15 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-calendar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Kalender erzeugen
+        run: python generate_calendar.py
+
+      - name: Änderungen speichern
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/zugkalender.ics docs/status.json
+
+          if git diff --cached --quiet; then
+            echo "Keine Änderung am Kalender."
+          else
+            git commit -m "Fahrplan automatisch aktualisiert"
+            git push
+          fi
