@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-"""Erzeugt einen iCalendar-Feed aus dem frei zugänglichen GTFS-Feed von GTFS.DE.
 
-Keine Registrierung, kein DB-API-Schlüssel und keine persönlichen Daten erforderlich.
-Der Feed enthält den deutschen Schienenregionalverkehr und wird von GTFS.DE
-regelmäßig aktualisiert.
-"""
+"""Erzeugt einen iCalendar-Feed aus dem GTFS-Feed von GTFS.DE."""
 
 from __future__ import annotations
 
@@ -20,34 +16,56 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 
+# ============================================================
+# KONFIGURATION
+# ============================================================
+
 CONFIG = json.loads(
-    Path("config.json").read_text(encoding="utf-8")
+    Path("config.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 TZ = ZoneInfo(
-    CONFIG.get("timezone", "Europe/Berlin")
+    CONFIG.get(
+        "timezone",
+        "Europe/Berlin"
+    )
 )
 
 FEED_URL = (
-    "https://download.gtfs.de/germany/rv_free/latest.zip"
+    "https://download.gtfs.de/"
+    "germany/rv_free/latest.zip"
 )
 
 
-def fetch_feed() -> zipfile.ZipFile:
-    print("Lade aktuellen GTFS-Fahrplan ...")
+# ============================================================
+# GTFS-FEED LADEN
+# ============================================================
 
-    req = Request(
+def fetch_feed() -> zipfile.ZipFile:
+
+    print(
+        "Lade aktuellen GTFS-Fahrplan ..."
+    )
+
+    request = Request(
         FEED_URL,
         headers={
-            "User-Agent": "zugkalender/2.0"
+            "User-Agent":
+                "zugkalender/3.0"
         }
     )
 
-    with urlopen(req, timeout=120) as response:
+    with urlopen(
+        request,
+        timeout=120
+    ) as response:
+
         data = response.read()
 
     print(
-        f"GTFS-Download: "
+        "GTFS-Download: "
         f"{len(data) / 1024 / 1024:.1f} MB"
     )
 
@@ -74,13 +92,21 @@ def read_csv(
         )
 
 
+# ============================================================
+# ZEITFUNKTIONEN
+# ============================================================
+
 def gtfs_time(
     value: str,
     service_day: date
 ) -> datetime:
-    """GTFS-Zeit; Werte >=24:00 dürfen bis in den Folgetag reichen."""
 
-    h, m, s = map(
+    """
+    GTFS erlaubt Stundenwerte über 24:
+    z.B. 25:30:00.
+    """
+
+    hours, minutes, seconds = map(
         int,
         value.split(":")
     )
@@ -92,14 +118,16 @@ def gtfs_time(
             TZ
         )
         + timedelta(
-            hours=h,
-            minutes=m,
-            seconds=s
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds
         )
     )
 
 
-def hm(value: str):
+def hm(
+    value: str
+):
     return datetime.strptime(
         value,
         "%H:%M"
@@ -123,17 +151,39 @@ def in_window(
     )
 
 
-def esc(value: str) -> str:
+# ============================================================
+# ICS-FUNKTIONEN
+# ============================================================
+
+def escape_ics(
+    value: str
+) -> str:
+
     return (
-        value
-        .replace("\\", "\\\\")
-        .replace(";", "\\;")
-        .replace(",", "\\,")
-        .replace("\n", "\\n")
+        str(value)
+        .replace(
+            "\\",
+            "\\\\"
+        )
+        .replace(
+            ";",
+            "\\;"
+        )
+        .replace(
+            ",",
+            "\\,"
+        )
+        .replace(
+            "\n",
+            "\\n"
+        )
     )
 
 
-def ics_dt(dt: datetime) -> str:
+def ics_datetime(
+    dt: datetime
+) -> str:
+
     return dt.astimezone(
         TZ
     ).strftime(
@@ -141,16 +191,29 @@ def ics_dt(dt: datetime) -> str:
     )
 
 
+# ============================================================
+# DATUMSBEREICH
+# ============================================================
+
 def date_range(
     start: date,
     end: date
 ):
-    d = start
 
-    while d <= end:
-        yield d
-        d += timedelta(days=1)
+    current = start
 
+    while current <= end:
+
+        yield current
+
+        current += timedelta(
+            days=1
+        )
+
+
+# ============================================================
+# BETRIEBSTAGE
+# ============================================================
 
 def active_dates(
     calendar_rows,
@@ -161,193 +224,183 @@ def active_dates(
 
     active = set()
 
+    weekday_keys = [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+    ]
+
+    # --------------------------------------------------------
+    # Reguläre Betriebstage
+    # --------------------------------------------------------
+
     for row in calendar_rows:
 
-        s = datetime.strptime(
+        service_start = datetime.strptime(
             row["start_date"],
             "%Y%m%d"
         ).date()
 
-        e = datetime.strptime(
+        service_end = datetime.strptime(
             row["end_date"],
             "%Y%m%d"
         ).date()
 
-        lo = max(start, s)
-        hi = min(end, e)
+        first = max(
+            start,
+            service_start
+        )
 
-        if lo > hi:
+        last = min(
+            end,
+            service_end
+        )
+
+        if first > last:
             continue
 
-        weekday_keys = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday"
-        ]
+        for current in date_range(
+            first,
+            last
+        ):
 
-        for d in date_range(lo, hi):
+            weekday = weekday_keys[
+                current.weekday()
+            ]
 
-            if row[
-                weekday_keys[d.weekday()]
-            ] == "1":
+            if row.get(
+                weekday
+            ) == "1":
 
                 active.add(
                     (
                         row["service_id"],
-                        d
+                        current
                     )
                 )
 
+    # --------------------------------------------------------
+    # Fahrplan-Ausnahmen
+    # --------------------------------------------------------
+
     for row in calendar_dates_rows:
 
-        d = datetime.strptime(
+        current = datetime.strptime(
             row["date"],
             "%Y%m%d"
         ).date()
 
         if not (
-            start <= d <= end
+            start
+            <= current
+            <= end
         ):
             continue
 
         key = (
             row["service_id"],
-            d
+            current
         )
 
+        # 1 = zusätzlicher Verkehrstag
         if row["exception_type"] == "1":
 
-            active.add(key)
+            active.add(
+                key
+            )
 
+        # 2 = Verkehr entfällt
         elif row["exception_type"] == "2":
 
-            active.discard(key)
+            active.discard(
+                key
+            )
 
     return active
 
 
+# ============================================================
+# BAHNHOFSSUCHE
+# ============================================================
+
 def normalize_station_name(
     value: str
 ) -> str:
-    """Normalisiert Bahnhofsnamen für einen robusten Vergleich."""
 
     if not value:
         return ""
 
     value = value.lower()
 
-    # Umlaute vereinheitlichen
     replacements = {
         "ä": "ae",
         "ö": "oe",
         "ü": "ue",
-        "ß": "ss",
+        "ß": "ss"
     }
 
     for old, new in replacements.items():
+
         value = value.replace(
             old,
             new
         )
 
-    # Alles entfernen, was kein Buchstabe oder keine Zahl ist.
-    # Dadurch werden z. B. diese Schreibweisen gleich:
-    #
-    # Frankfurt (Main) Hbf
-    # Frankfurt(Main)Hbf
-    # Frankfurt-Main Hbf
-    #
-    value = re.sub(
+    return re.sub(
         r"[^a-z0-9]",
         "",
         value
     )
-
-    return value
 
 
 def station_ids(
     stops,
     station_name
 ):
-    """Findet alle GTFS-Stop-IDs eines Bahnhofs.
 
-    Die Suche erfolgt zunächst exakt und anschließend über
-    eine normalisierte Schreibweise. Dadurch werden
-    unterschiedliche Schreibweisen desselben Bahnhofs erkannt.
-    """
-
-    wanted_exact = " ".join(
-        station_name
-        .lower()
-        .split()
-    )
-
-    wanted_normalized = normalize_station_name(
+    wanted = normalize_station_name(
         station_name
     )
 
     ids = set()
 
     print(
-        f"Suche Bahnhof: {station_name}"
+        f"Suche Bahnhof: "
+        f"{station_name}"
     )
 
-    # ---------------------------------------------------------
-    # 1. Exakte Suche
-    # ---------------------------------------------------------
+    # --------------------------------------------------------
+    # Exakte / normalisierte Suche
+    # --------------------------------------------------------
 
     for stop in stops:
 
-        name = " ".join(
+        stop_name = normalize_station_name(
             stop.get(
                 "stop_name",
                 ""
             )
-            .lower()
-            .split()
         )
 
-        if name == wanted_exact:
+        if stop_name == wanted:
 
             ids.add(
                 stop["stop_id"]
             )
 
-    # ---------------------------------------------------------
-    # 2. Normalisierte Suche
-    # ---------------------------------------------------------
+    # --------------------------------------------------------
+    # Teiltreffer als Fallback
+    # --------------------------------------------------------
 
     if not ids:
 
         for stop in stops:
 
-            name = normalize_station_name(
-                stop.get(
-                    "stop_name",
-                    ""
-                )
-            )
-
-            if name == wanted_normalized:
-
-                ids.add(
-                    stop["stop_id"]
-                )
-
-    # ---------------------------------------------------------
-    # 3. Teilweise Suche als zusätzliche Absicherung
-    # ---------------------------------------------------------
-
-    if not ids:
-
-        for stop in stops:
-
-            name = normalize_station_name(
+            stop_name = normalize_station_name(
                 stop.get(
                     "stop_name",
                     ""
@@ -355,17 +408,13 @@ def station_ids(
             )
 
             if (
-                wanted_normalized in name
-                or name in wanted_normalized
+                wanted in stop_name
+                or stop_name in wanted
             ):
 
                 ids.add(
                     stop["stop_id"]
                 )
-
-    # ---------------------------------------------------------
-    # Ergebnis
-    # ---------------------------------------------------------
 
     if not ids:
 
@@ -384,13 +433,17 @@ def station_ids(
         if stop["stop_id"] in ids:
 
             print(
-                f"  -> "
+                "  -> "
                 f"{stop.get('stop_name')} "
                 f"[{stop.get('stop_id')}]"
             )
 
     return ids
 
+
+# ============================================================
+# HAUPTPROGRAMM
+# ============================================================
 
 def main():
 
@@ -405,18 +458,40 @@ def main():
         TZ
     ).date()
 
-    end = (
+    end_date = (
         today
-        + timedelta(days=horizon)
+        + timedelta(
+            days=horizon
+        )
     )
 
-    # ---------------------------------------------------------
-    # GTFS laden
-    # ---------------------------------------------------------
+    print()
+    print(
+        "========================================"
+    )
+    print(
+        "ZUGKALENDER"
+    )
+    print(
+        "========================================"
+    )
+
+    print(
+        f"Zeitraum: "
+        f"{today} bis {end_date}"
+    )
+
+    print()
+
+    # ========================================================
+    # GTFS LADEN
+    # ========================================================
 
     with fetch_feed() as zf:
 
-        print("Lese GTFS-Dateien ...")
+        print(
+            "Lese GTFS-Dateien ..."
+        )
 
         stops = read_csv(
             zf,
@@ -433,35 +508,38 @@ def main():
             "stop_times.txt"
         )
 
-        calendar = (
-            read_csv(
+        if "calendar.txt" in zf.namelist():
+
+            calendar = read_csv(
                 zf,
                 "calendar.txt"
             )
-            if "calendar.txt"
-            in zf.namelist()
-            else []
-        )
 
-        calendar_dates = (
-            read_csv(
+        else:
+
+            calendar = []
+
+        if "calendar_dates.txt" in zf.namelist():
+
+            calendar_dates = read_csv(
                 zf,
                 "calendar_dates.txt"
             )
-            if "calendar_dates.txt"
-            in zf.namelist()
-            else []
-        )
 
-        routes = (
-            read_csv(
+        else:
+
+            calendar_dates = []
+
+        if "routes.txt" in zf.namelist():
+
+            routes = read_csv(
                 zf,
                 "routes.txt"
             )
-            if "routes.txt"
-            in zf.namelist()
-            else []
-        )
+
+        else:
+
+            routes = []
 
     print(
         f"Stops: {len(stops)}"
@@ -475,289 +553,284 @@ def main():
         f"Stop times: {len(stop_times)}"
     )
 
-    # ---------------------------------------------------------
-    # Bahnhöfe bestimmen
-    # ---------------------------------------------------------
+    print()
+
+    # ========================================================
+    # BAHNHÖFE
+    # ========================================================
+
+    from_station = CONFIG["from"]
+    to_station = CONFIG["to"]
 
     from_ids = station_ids(
         stops,
-        CONFIG["from"]["name"]
+        from_station["name"]
     )
 
     to_ids = station_ids(
         stops,
-        CONFIG["to"]["name"]
+        to_station["name"]
     )
 
     print()
 
     print(
-        f"Startbahnhof: "
-        f"{CONFIG['from']['name']}"
+        "Startbahnhof: "
+        f"{from_station['name']}"
     )
 
     print(
-        f"Zielbahnhof: "
-        f"{CONFIG['to']['name']}"
+        "Zielbahnhof: "
+        f"{to_station['name']}"
     )
 
     print()
 
-    # ---------------------------------------------------------
-    # Trips und Linien vorbereiten
-    # ---------------------------------------------------------
+    # ========================================================
+    # TRIPS / ROUTEN
+    # ========================================================
 
     trip_by_id = {
-        t["trip_id"]: t
-        for t in trips
+        trip["trip_id"]: trip
+        for trip in trips
     }
 
     route_by_id = {
-        r["route_id"]: r
-        for r in routes
+        route["route_id"]: route
+        for route in routes
     }
 
-    # ---------------------------------------------------------
-    # Relevante Stopzeiten sammeln
-    # ---------------------------------------------------------
+    # ========================================================
+    # STOP TIMES NACH TRIP SORTIEREN
+    # ========================================================
 
-    relevant = {}
+    stop_times_by_trip = {}
 
-    for st in stop_times:
+    for row in stop_times:
 
-        sid = st.get(
-            "stop_id"
-        )
+        trip_id = row["trip_id"]
 
-        if (
-            sid not in from_ids
-            and sid not in to_ids
-        ):
-            continue
-
-        tid = st["trip_id"]
-
-        relevant.setdefault(
-            tid,
+        stop_times_by_trip.setdefault(
+            trip_id,
             []
-        ).append(st)
+        ).append(row)
 
-    print(
-        f"Relevante Trips: "
-        f"{len(relevant)}"
-    )
-
-    # ---------------------------------------------------------
-    # Trips mit beiden Bahnhöfen bestimmen
-    # ---------------------------------------------------------
-
-    pairs = []
-
-    for tid, rows in relevant.items():
-
-        trip = trip_by_id.get(
-            tid
-        )
-
-        if not trip:
-            continue
-
-        try:
-
-            ordered = sorted(
-                rows,
-                key=lambda r:
-                int(
-                    r.get(
-                        "stop_sequence",
-                        "0"
-                    )
-                )
-            )
-
-        except ValueError:
-
-            ordered = rows
-
-        from_rows = [
-            r
-            for r in ordered
-            if r.get("stop_id")
-            in from_ids
-        ]
-
-        to_rows = [
-            r
-            for r in ordered
-            if r.get("stop_id")
-            in to_ids
-        ]
-
-        if (
-            from_rows
-            and to_rows
-        ):
-
-            pairs.append(
-                (
-                    tid,
-                    trip,
-                    from_rows,
-                    to_rows
-                )
-            )
-
-    print(
-        f"Trips mit beiden "
-        f"Bahnhöfen: {len(pairs)}"
-    )
-
-    # ---------------------------------------------------------
-    # Gültige Betriebstage
-    # ---------------------------------------------------------
+    # ========================================================
+    # BETRIEBSTAGE
+    # ========================================================
 
     active = active_dates(
         calendar,
         calendar_dates,
         today,
-        end
+        end_date
     )
+
+    # ========================================================
+    # EVENTS
+    # ========================================================
 
     events = []
 
-    counts = {
-        "outbound": 0,
-        "return": 0
-    }
+    outbound_count = 0
+    return_count = 0
 
-    # ---------------------------------------------------------
-    # Fahrten erzeugen
-    # ---------------------------------------------------------
+    # ========================================================
+    # JEDEN TAG PRÜFEN
+    # ========================================================
 
-    for d in date_range(
+    for current_date in date_range(
         today,
-        end
+        end_date
     ):
 
         # Nur Montag bis Freitag
-        if d.weekday() >= 5:
+        if (
+            CONFIG.get(
+                "weekday_only",
+                True
+            )
+            and current_date.weekday() >= 5
+        ):
             continue
 
-        # -----------------------------------------------------
-        # Morgens hin
-        # -----------------------------------------------------
+        # ====================================================
+        # DIE BEIDEN RICHTUNGEN
+        #
+        # WICHTIG:
+        # Für die Rückfahrt werden die Bahnhöfe wirklich
+        # umgedreht.
+        # ====================================================
 
         directions = [
-            (
-                "outbound",
-                from_ids,
-                to_ids,
-                CONFIG["morning"]
-            ),
-            (
-                "return",
-                to_ids,
-                from_ids,
-                CONFIG["afternoon"]
-            )
+
+            {
+                "name": "outbound",
+                "label": "Hinfahrt",
+                "origin_ids": from_ids,
+                "destination_ids": to_ids,
+                "origin_name": from_station["name"],
+                "destination_name": to_station["name"],
+                "window": CONFIG["morning"]
+            },
+
+            {
+                "name": "return",
+                "label": "Rückfahrt",
+                "origin_ids": to_ids,
+                "destination_ids": from_ids,
+                "origin_name": to_station["name"],
+                "destination_name": from_station["name"],
+                "window": CONFIG["afternoon"]
+            }
         ]
 
-        for (
-            direction,
-            origin_ids,
-            destination_ids,
-            window
-        ) in directions:
+        # ====================================================
+        # RICHTUNG DURCHLAUFEN
+        # ====================================================
 
-            for (
-                tid,
-                trip,
-                origin_rows,
-                destination_rows
-            ) in pairs:
+        for direction in directions:
 
-                # Prüfen, ob der Zug an diesem Tag fährt
+            origin_ids = direction[
+                "origin_ids"
+            ]
+
+            destination_ids = direction[
+                "destination_ids"
+            ]
+
+            window = direction[
+                "window"
+            ]
+
+            origin_name = direction[
+                "origin_name"
+            ]
+
+            destination_name = direction[
+                "destination_name"
+            ]
+
+            # ------------------------------------------------
+            # Alle Trips prüfen
+            # ------------------------------------------------
+
+            for trip_id, trip in trip_by_id.items():
+
+                service_id = trip.get(
+                    "service_id"
+                )
+
+                # Fährt dieser Service an diesem Tag?
                 if (
-                    trip.get("service_id"),
-                    d
+                    service_id,
+                    current_date
                 ) not in active:
 
                     continue
 
-                # -------------------------------------------------
-                # Richtige Fahrtrichtung
-                # -------------------------------------------------
+                rows = stop_times_by_trip.get(
+                    trip_id,
+                    []
+                )
 
-                found_connection = False
+                if not rows:
+                    continue
 
-                for o in origin_rows:
+                # ------------------------------------------------
+                # Stop Times nach Reihenfolge sortieren
+                # ------------------------------------------------
 
-                    for dest in destination_rows:
+                try:
 
-                        try:
-
-                            origin_sequence = int(
-                                o.get(
+                    rows = sorted(
+                        rows,
+                        key=lambda row:
+                            int(
+                                row.get(
                                     "stop_sequence",
                                     "0"
                                 )
                             )
+                    )
 
-                            destination_sequence = int(
-                                dest.get(
-                                    "stop_sequence",
-                                    "0"
-                                )
-                            )
+                except ValueError:
 
-                        except ValueError:
+                    continue
 
-                            continue
+                # ------------------------------------------------
+                # Abfahrt und Ankunft suchen
+                #
+                # Wir suchen bewusst nach dem ERSTEN passenden
+                # Origin und dem DARAUFFOLGENDEN Destination.
+                # ------------------------------------------------
+
+                connection = None
+
+                for origin_index, origin_row in enumerate(
+                    rows
+                ):
+
+                    if (
+                        origin_row.get(
+                            "stop_id"
+                        )
+                        not in origin_ids
+                    ):
+                        continue
+
+                    for destination_row in rows[
+                        origin_index + 1:
+                    ]:
 
                         if (
-                            origin_sequence
-                            >= destination_sequence
+                            destination_row.get(
+                                "stop_id"
+                            )
+                            not in destination_ids
                         ):
-
                             continue
 
-                        dep_raw = (
-                            o.get(
+                        departure_raw = (
+                            origin_row.get(
                                 "departure_time"
                             )
-                            or o.get(
+                            or origin_row.get(
                                 "arrival_time"
                             )
                         )
 
-                        arr_raw = (
-                            dest.get(
+                        arrival_raw = (
+                            destination_row.get(
                                 "arrival_time"
                             )
-                            or dest.get(
+                            or destination_row.get(
                                 "departure_time"
                             )
                         )
 
-                        if not dep_raw or not arr_raw:
+                        if (
+                            not departure_raw
+                            or not arrival_raw
+                        ):
                             continue
 
-                        dep = gtfs_time(
-                            dep_raw,
-                            d
+                        departure = gtfs_time(
+                            departure_raw,
+                            current_date
                         )
 
-                        arr = gtfs_time(
-                            arr_raw,
-                            d
+                        arrival = gtfs_time(
+                            arrival_raw,
+                            current_date
                         )
 
-                        # -------------------------------------------------
+                        if arrival <= departure:
+                            continue
+
                         # Zeitfenster prüfen
-                        # -------------------------------------------------
-
                         if not in_window(
-                            dep,
+                            departure,
                             window[
                                 "departure_start"
                             ],
@@ -765,178 +838,212 @@ def main():
                                 "departure_end"
                             ]
                         ):
-
                             continue
 
-                        if arr <= dep:
-                            continue
-
-                        # -------------------------------------------------
-                        # Linieninformationen
-                        # -------------------------------------------------
-
-                        route = route_by_id.get(
-                            trip.get(
-                                "route_id",
-                                ""
-                            ),
-                            {}
+                        connection = (
+                            origin_row,
+                            destination_row,
+                            departure,
+                            arrival
                         )
-
-                        route_name = (
-                            route.get(
-                                "route_short_name"
-                            )
-                            or route.get(
-                                "route_long_name"
-                            )
-                            or "Zug"
-                        )
-
-                        headsign = trip.get(
-                            "trip_headsign",
-                            ""
-                        )
-
-                        service_trip = trip.get(
-                            "trip_id",
-                            tid
-                        )
-
-                        # -------------------------------------------------
-                        # Bahnhofsnamen
-                        # -------------------------------------------------
-
-                        if direction == "outbound":
-
-                            origin_name = CONFIG[
-                                "from"
-                            ][
-                                "name"
-                            ]
-
-                            destination_name = CONFIG[
-                                "to"
-                            ][
-                                "name"
-                            ]
-
-                        else:
-
-                            origin_name = CONFIG[
-                                "to"
-                            ][
-                                "name"
-                            ]
-
-                            destination_name = CONFIG[
-                                "from"
-                            ][
-                                "name"
-                            ]
-
-                        # -------------------------------------------------
-                        # Kalender-Titel
-                        # -------------------------------------------------
-
-                        summary = (
-                            f"{route_name}: "
-                            f"{origin_name} → "
-                            f"{destination_name}"
-                        )
-
-                        # -------------------------------------------------
-                        # Eindeutige ID
-                        # -------------------------------------------------
-
-                        uid = (
-                            f"{d:%Y%m%d}-"
-                            f"{direction}-"
-                            f"{tid}-"
-                            f"{o.get('stop_sequence')}-"
-                            f"{dest.get('stop_sequence')}"
-                            "@zugkalender"
-                        )
-
-                        # -------------------------------------------------
-                        # Beschreibung
-                        # -------------------------------------------------
-
-                        desc = (
-                            f"Linie: {route_name}\\n"
-                            f"Abfahrt: {dep:%H:%M}\\n"
-                            f"Ankunft: {arr:%H:%M}\\n"
-                            f"Ziel/Headsign: {headsign}\\n"
-                            f"Quelle: GTFS für Deutschland / "
-                            f"Schienenregionalverkehr\\n"
-                            f"Trip-ID: {service_trip}"
-                        )
-
-                        # -------------------------------------------------
-                        # Kalender-Event
-                        # -------------------------------------------------
-
-                        event = "\r\n".join(
-                            [
-                                "BEGIN:VEVENT",
-
-                                f"UID:{esc(uid)}",
-
-                                (
-                                    "DTSTAMP:"
-                                    f"{datetime.now(TZ).strftime('%Y%m%dT%H%M%S')}"
-                                ),
-
-                                (
-                                    "DTSTART;TZID=Europe/Berlin:"
-                                    f"{ics_dt(dep)}"
-                                ),
-
-                                (
-                                    "DTEND;TZID=Europe/Berlin:"
-                                    f"{ics_dt(arr)}"
-                                ),
-
-                                (
-                                    "SUMMARY:"
-                                    f"{esc(summary)}"
-                                ),
-
-                                (
-                                    "DESCRIPTION:"
-                                    f"{esc(desc)}"
-                                ),
-
-                                (
-                                    "LOCATION:"
-                                    f"{esc(origin_name)}"
-                                ),
-
-                                "STATUS:CONFIRMED",
-                                "TRANSP:OPAQUE",
-
-                                "END:VEVENT"
-                            ]
-                        )
-
-                        events.append(
-                            event
-                        )
-
-                        counts[
-                            direction
-                        ] += 1
-
-                        found_connection = True
 
                         break
 
-                    if found_connection:
+                    if connection:
                         break
 
-    # ---------------------------------------------------------
-    # Doppelte Events entfernen
-    # ---------------------------------------------------------
+                # Keine passende Verbindung
+                if not connection:
+                    continue
+
+                (
+                    origin_row,
+                    destination_row,
+                    departure,
+                    arrival
+                ) = connection
+
+                # =================================================
+                # ROUTENINFORMATIONEN
+                # =================================================
+
+                route = route_by_id.get(
+                    trip.get(
+                        "route_id",
+                        ""
+                    ),
+                    {}
+                )
+
+                route_short_name = (
+                    route.get(
+                        "route_short_name"
+                    )
+                    or ""
+                )
+
+                route_long_name = (
+                    route.get(
+                        "route_long_name"
+                    )
+                    or ""
+                )
+
+                if route_short_name:
+
+                    train_name = (
+                        route_short_name
+                    )
+
+                elif route_long_name:
+
+                    train_name = (
+                        route_long_name
+                    )
+
+                else:
+
+                    train_name = "Zug"
+
+                headsign = (
+                    trip.get(
+                        "trip_headsign",
+                        ""
+                    )
+                )
+
+                # =================================================
+                # TITEL
+                # =================================================
+
+                summary = (
+                    f"{train_name}: "
+                    f"{origin_name} → "
+                    f"{destination_name}"
+                )
+
+                # =================================================
+                # BESCHREIBUNG
+                # =================================================
+
+                description_lines = [
+
+                    f"Abfahrt: "
+                    f"{departure:%H:%M}",
+
+                    f"Ankunft: "
+                    f"{arrival:%H:%M}",
+
+                    f"Linie: "
+                    f"{train_name}"
+                ]
+
+                if headsign:
+
+                    description_lines.append(
+                        f"Zugziel: "
+                        f"{headsign}"
+                    )
+
+                if route_long_name:
+
+                    description_lines.append(
+                        route_long_name
+                    )
+
+                description_lines.extend(
+                    [
+                        "",
+                        "Quelle: GTFS.DE",
+                        "Schienenregionalverkehr",
+                        "",
+                        "Dieser Kalender enthält "
+                        "Fahrplandaten.",
+                        "Verspätungen oder kurzfristige "
+                        "Zugausfälle werden nicht "
+                        "berücksichtigt."
+                    ]
+                )
+
+                description = "\\n".join(
+                    description_lines
+                )
+
+                # =================================================
+                # Eindeutige UID
+                # =================================================
+
+                uid = (
+                    f"{current_date:%Y%m%d}-"
+                    f"{direction['name']}-"
+                    f"{trip_id}-"
+                    f"{origin_row.get('stop_sequence')}-"
+                    f"{destination_row.get('stop_sequence')}"
+                    "@zugkalender"
+                )
+
+                # =================================================
+                # ICS EVENT
+                # =================================================
+
+                event = [
+                    "BEGIN:VEVENT",
+
+                    f"UID:{escape_ics(uid)}",
+
+                    (
+                        "DTSTAMP:"
+                        f"{datetime.now(TZ).strftime('%Y%m%dT%H%M%S')}"
+                    ),
+
+                    (
+                        "DTSTART;TZID=Europe/Berlin:"
+                        f"{ics_datetime(departure)}"
+                    ),
+
+                    (
+                        "DTEND;TZID=Europe/Berlin:"
+                        f"{ics_datetime(arrival)}"
+                    ),
+
+                    (
+                        "SUMMARY:"
+                        f"{escape_ics(summary)}"
+                    ),
+
+                    (
+                        "DESCRIPTION:"
+                        f"{escape_ics(description)}"
+                    ),
+
+                    (
+                        "LOCATION:"
+                        f"{escape_ics(origin_name)}"
+                    ),
+
+                    "STATUS:CONFIRMED",
+
+                    "TRANSP:OPAQUE",
+
+                    "END:VEVENT"
+                ]
+
+                events.append(
+                    "\r\n".join(event)
+                )
+
+                # Statistik
+                if direction["name"] == "outbound":
+
+                    outbound_count += 1
+
+                else:
+
+                    return_count += 1
+
+    # ========================================================
+    # DOPPELTE EVENTS ENTFERNEN
+    # ========================================================
 
     events = list(
         dict.fromkeys(
@@ -944,24 +1051,60 @@ def main():
         )
     )
 
-    # ---------------------------------------------------------
-    # Kalenderkopf
-    # ---------------------------------------------------------
+    # ========================================================
+    # SORTIERUNG
+    #
+    # Die Events werden bereits chronologisch erzeugt.
+    # ========================================================
+
+    print()
+
+    print(
+        "========================================"
+    )
+
+    print(
+        f"Hinfahrten: "
+        f"{outbound_count}"
+    )
+
+    print(
+        f"Rückfahrten: "
+        f"{return_count}"
+    )
+
+    print(
+        f"Gesamt: "
+        f"{len(events)}"
+    )
+
+    print(
+        "========================================"
+    )
+
+    # ========================================================
+    # ICS-KOPF
+    # ========================================================
 
     header = [
+
         "BEGIN:VCALENDAR",
+
         "VERSION:2.0",
+
         (
             "PRODID:"
             "//Zugkalender "
             "Niederweimar Frankfurt//DE"
         ),
+
         "CALSCALE:GREGORIAN",
+
         "METHOD:PUBLISH",
 
         (
             "X-WR-CALNAME:"
-            + esc(
+            + escape_ics(
                 CONFIG[
                     "calendar_name"
                 ]
@@ -971,15 +1114,17 @@ def main():
         "X-WR-TIMEZONE:Europe/Berlin"
     ]
 
-    # ---------------------------------------------------------
-    # ICS-Datei schreiben
-    # ---------------------------------------------------------
+    # ========================================================
+    # ICS-DATEI SCHREIBEN
+    # ========================================================
 
     ics_content = (
         "\r\n".join(
             header
             + events
-            + ["END:VCALENDAR"]
+            + [
+                "END:VCALENDAR"
+            ]
         )
         + "\r\n"
     )
@@ -991,28 +1136,31 @@ def main():
         encoding="utf-8"
     )
 
-    # ---------------------------------------------------------
-    # Statusdatei schreiben
-    # ---------------------------------------------------------
+    # ========================================================
+    # STATUSDATEI
+    # ========================================================
 
     status = {
+
         "generated_at":
-            datetime.now(TZ).isoformat(),
+            datetime.now(
+                TZ
+            ).isoformat(),
 
         "valid_from":
             today.isoformat(),
 
         "valid_until":
-            end.isoformat(),
+            end_date.isoformat(),
 
         "events":
             len(events),
 
         "outbound_events":
-            counts["outbound"],
+            outbound_count,
 
         "return_events":
-            counts["return"],
+            return_count,
 
         "source":
             FEED_URL,
@@ -1021,11 +1169,12 @@ def main():
             "Creative Commons 4.0",
 
         "stations": {
+
             "from":
-                CONFIG["from"],
+                from_station,
 
             "to":
-                CONFIG["to"]
+                to_station
         }
     }
 
@@ -1040,25 +1189,41 @@ def main():
         encoding="utf-8"
     )
 
+    # ========================================================
+    # ABSCHLUSS
+    # ========================================================
+
     print()
-    print(
-        "========================================"
-    )
+
     print(
         "Kalender erfolgreich erzeugt!"
     )
+
     print(
-        "========================================"
+        f"Zeitraum: "
+        f"{today} bis {end_date}"
     )
 
     print(
-        json.dumps(
-            status,
-            ensure_ascii=False,
-            indent=2
-        )
+        f"Hinfahrten: "
+        f"{outbound_count}"
     )
 
+    print(
+        f"Rückfahrten: "
+        f"{return_count}"
+    )
+
+    print(
+        f"Gesamt: "
+        f"{len(events)}"
+    )
+
+
+# ============================================================
+# START
+# ============================================================
 
 if __name__ == "__main__":
+
     main()
