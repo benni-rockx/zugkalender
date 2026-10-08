@@ -1,3 +1,20 @@
 {
-  "status": "Wird nach dem ersten GitHub-Workflow-Lauf erzeugt."
+  "generated_at": "2026-10-08T20:58:34.109923+02:00",
+  "valid_from": "2026-10-08",
+  "valid_until": "2026-11-12",
+  "events": 18,
+  "outbound_events": 18,
+  "return_events": 0,
+  "source": "https://download.gtfs.de/germany/rv_free/latest.zip",
+  "source_license": "Creative Commons 4.0",
+  "stations": {
+    "from": {
+      "name": "Niederweimar",
+      "eva": "8004420"
+    },
+    "to": {
+      "name": "Frankfurt (Main) Hbf",
+      "eva": "8000105"
+    }
+  }
 }
