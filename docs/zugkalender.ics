@@ -6,19 +6,8 @@ METHOD:PUBLISH
 X-WR-CALNAME:Zugverbindungen Niederweimar ↔ Frankfurt
 X-WR-TIMEZONE:Europe/Berlin
 BEGIN:VEVENT
-UID:20261127-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144637
-DTSTART;TZID=Europe/Berlin:20261127T052700
-DTEND;TZID=Europe/Berlin:20261127T065900
-SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
-DESCRIPTION:Abfahrt: 05:27\\nAnkunft: 06:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
-LOCATION:Niederweimar
-STATUS:CONFIRMED
-TRANSP:OPAQUE
-END:VEVENT
-BEGIN:VEVENT
-UID:20261130-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144638
+UID:20261130-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135527
 DTSTART;TZID=Europe/Berlin:20261130T052700
 DTEND;TZID=Europe/Berlin:20261130T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -28,8 +17,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261201-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144638
+UID:20261201-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135527
 DTSTART;TZID=Europe/Berlin:20261201T052700
 DTEND;TZID=Europe/Berlin:20261201T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -39,8 +28,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261202-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144638
+UID:20261202-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135528
 DTSTART;TZID=Europe/Berlin:20261202T052700
 DTEND;TZID=Europe/Berlin:20261202T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -50,8 +39,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261203-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144639
+UID:20261203-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135528
 DTSTART;TZID=Europe/Berlin:20261203T052700
 DTEND;TZID=Europe/Berlin:20261203T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -61,8 +50,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261204-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144639
+UID:20261204-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135528
 DTSTART;TZID=Europe/Berlin:20261204T052700
 DTEND;TZID=Europe/Berlin:20261204T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -72,8 +61,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261207-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144639
+UID:20261207-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135529
 DTSTART;TZID=Europe/Berlin:20261207T052700
 DTEND;TZID=Europe/Berlin:20261207T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -83,8 +72,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261208-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144640
+UID:20261208-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135529
 DTSTART;TZID=Europe/Berlin:20261208T052700
 DTEND;TZID=Europe/Berlin:20261208T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -94,8 +83,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261209-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144640
+UID:20261209-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135530
 DTSTART;TZID=Europe/Berlin:20261209T052700
 DTEND;TZID=Europe/Berlin:20261209T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -105,8 +94,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261210-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144641
+UID:20261210-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135530
 DTSTART;TZID=Europe/Berlin:20261210T052700
 DTEND;TZID=Europe/Berlin:20261210T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -116,8 +105,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261211-outbound-2q5x-2-18@zugkalender
-DTSTAMP:20261127T144641
+UID:20261211-outbound-b5hc-2-18@zugkalender
+DTSTAMP:20261128T135531
 DTSTART;TZID=Europe/Berlin:20261211T052700
 DTEND;TZID=Europe/Berlin:20261211T065900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -127,19 +116,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261214-outbound-91q6-2-18@zugkalender
-DTSTAMP:20261127T144641
-DTSTART;TZID=Europe/Berlin:20261214T062400
-DTEND;TZID=Europe/Berlin:20261214T075900
-SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
-DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
-LOCATION:Niederweimar
-STATUS:CONFIRMED
-TRANSP:OPAQUE
-END:VEVENT
-BEGIN:VEVENT
-UID:20261214-outbound-uj78-11-22@zugkalender
-DTSTAMP:20261127T144641
+UID:20261214-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135531
 DTSTART;TZID=Europe/Berlin:20261214T065400
 DTEND;TZID=Europe/Berlin:20261214T080900
 SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
@@ -149,10 +127,10 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261215-outbound-91q6-2-18@zugkalender
-DTSTAMP:20261127T144642
-DTSTART;TZID=Europe/Berlin:20261215T062400
-DTEND;TZID=Europe/Berlin:20261215T075900
+UID:20261214-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135531
+DTSTART;TZID=Europe/Berlin:20261214T062400
+DTEND;TZID=Europe/Berlin:20261214T075900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
 DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
 LOCATION:Niederweimar
@@ -160,8 +138,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261215-outbound-uj78-11-22@zugkalender
-DTSTAMP:20261127T144642
+UID:20261215-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135532
 DTSTART;TZID=Europe/Berlin:20261215T065400
 DTEND;TZID=Europe/Berlin:20261215T080900
 SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
@@ -171,10 +149,10 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261216-outbound-91q6-2-18@zugkalender
-DTSTAMP:20261127T144642
-DTSTART;TZID=Europe/Berlin:20261216T062400
-DTEND;TZID=Europe/Berlin:20261216T075900
+UID:20261215-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135532
+DTSTART;TZID=Europe/Berlin:20261215T062400
+DTEND;TZID=Europe/Berlin:20261215T075900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
 DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
 LOCATION:Niederweimar
@@ -182,8 +160,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261216-outbound-uj78-11-22@zugkalender
-DTSTAMP:20261127T144642
+UID:20261216-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135532
 DTSTART;TZID=Europe/Berlin:20261216T065400
 DTEND;TZID=Europe/Berlin:20261216T080900
 SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
@@ -193,10 +171,10 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261217-outbound-91q6-2-18@zugkalender
-DTSTAMP:20261127T144642
-DTSTART;TZID=Europe/Berlin:20261217T062400
-DTEND;TZID=Europe/Berlin:20261217T075900
+UID:20261216-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135532
+DTSTART;TZID=Europe/Berlin:20261216T062400
+DTEND;TZID=Europe/Berlin:20261216T075900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
 DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
 LOCATION:Niederweimar
@@ -204,8 +182,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261217-outbound-uj78-11-22@zugkalender
-DTSTAMP:20261127T144642
+UID:20261217-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135532
 DTSTART;TZID=Europe/Berlin:20261217T065400
 DTEND;TZID=Europe/Berlin:20261217T080900
 SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
@@ -215,10 +193,10 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261218-outbound-91q6-2-18@zugkalender
-DTSTAMP:20261127T144643
-DTSTART;TZID=Europe/Berlin:20261218T062400
-DTEND;TZID=Europe/Berlin:20261218T075900
+UID:20261217-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135533
+DTSTART;TZID=Europe/Berlin:20261217T062400
+DTEND;TZID=Europe/Berlin:20261217T075900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
 DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
 LOCATION:Niederweimar
@@ -226,8 +204,8 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261218-outbound-uj78-11-22@zugkalender
-DTSTAMP:20261127T144643
+UID:20261218-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135533
 DTSTART;TZID=Europe/Berlin:20261218T065400
 DTEND;TZID=Europe/Berlin:20261218T080900
 SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
@@ -237,8 +215,30 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261221-outbound-91q6-2-18@zugkalender
-DTSTAMP:20261127T144643
+UID:20261218-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135533
+DTSTART;TZID=Europe/Berlin:20261218T062400
+DTEND;TZID=Europe/Berlin:20261218T075900
+SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261221-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135533
+DTSTART;TZID=Europe/Berlin:20261221T065400
+DTEND;TZID=Europe/Berlin:20261221T080900
+SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:54\\nAnkunft: 08:09\\nLinie: RB41\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261221-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135533
 DTSTART;TZID=Europe/Berlin:20261221T062400
 DTEND;TZID=Europe/Berlin:20261221T075900
 SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
@@ -248,12 +248,78 @@ STATUS:CONFIRMED
 TRANSP:OPAQUE
 END:VEVENT
 BEGIN:VEVENT
-UID:20261221-outbound-uj78-11-22@zugkalender
-DTSTAMP:20261127T144643
-DTSTART;TZID=Europe/Berlin:20261221T065400
-DTEND;TZID=Europe/Berlin:20261221T080900
+UID:20261222-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135534
+DTSTART;TZID=Europe/Berlin:20261222T065400
+DTEND;TZID=Europe/Berlin:20261222T080900
 SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
 DESCRIPTION:Abfahrt: 06:54\\nAnkunft: 08:09\\nLinie: RB41\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261222-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135534
+DTSTART;TZID=Europe/Berlin:20261222T062400
+DTEND;TZID=Europe/Berlin:20261222T075900
+SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261223-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135534
+DTSTART;TZID=Europe/Berlin:20261223T065400
+DTEND;TZID=Europe/Berlin:20261223T080900
+SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:54\\nAnkunft: 08:09\\nLinie: RB41\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261223-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135534
+DTSTART;TZID=Europe/Berlin:20261223T062400
+DTEND;TZID=Europe/Berlin:20261223T075900
+SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261224-outbound-7ug2-2-13@zugkalender
+DTSTAMP:20261128T135534
+DTSTART;TZID=Europe/Berlin:20261224T065400
+DTEND;TZID=Europe/Berlin:20261224T080900
+SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:54\\nAnkunft: 08:09\\nLinie: RB41\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261228-outbound-1aihn-11-22@zugkalender
+DTSTAMP:20261128T135535
+DTSTART;TZID=Europe/Berlin:20261228T065400
+DTEND;TZID=Europe/Berlin:20261228T080900
+SUMMARY:RB41: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:54\\nAnkunft: 08:09\\nLinie: RB41\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
+LOCATION:Niederweimar
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+END:VEVENT
+BEGIN:VEVENT
+UID:20261228-outbound-lfzf-2-18@zugkalender
+DTSTAMP:20261128T135535
+DTSTART;TZID=Europe/Berlin:20261228T062400
+DTEND;TZID=Europe/Berlin:20261228T075900
+SUMMARY:RE30: Niederweimar → Frankfurt (Main) Hbf
+DESCRIPTION:Abfahrt: 06:24\\nAnkunft: 07:59\\nLinie: RE30\\n\\nQuelle: GTFS.DE\\nSchienenregionalverkehr\\n\\nDieser Kalender enthält Fahrplandaten.\\nVerspätungen oder kurzfristige Zugausfälle werden nicht berücksichtigt.
 LOCATION:Niederweimar
 STATUS:CONFIRMED
 TRANSP:OPAQUE
